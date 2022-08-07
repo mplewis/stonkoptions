@@ -1,57 +1,70 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
-defineProps<{ msg: string }>()
+function fmtNum(num: number): string {
+  return new Intl.NumberFormat('en-US').format(num)
+}
 
-const count = ref(0)
+function fmtUSD(num: number, sigfig?: number): string {
+  const opts: { [k: string]: any } = { style: 'currency', currency: 'USD' }
+  if (sigfig) {
+    opts.maximumSignificantDigits = sigfig
+  }
+  return new Intl.NumberFormat('en-US', opts).format(num)
+}
 
 const min = 1_000_000 // 1m
 const max = 100_000_000_000 // 100b
 const steps = 50
 
-const rawSlider = ref(0)
-function onChange(event: any) {
-  rawSlider.value = parseInt(event.target.value) / 1000
-}
-const slider = computed(() => {
-  return Math.pow(10, rawSlider.value)
+const sMin = Math.log10(min) * 1000
+const sMax = Math.log10(max) * 1000
+const sStep = (sMax - sMin) / steps
+
+const rCompanyValuation = ref(sMin.toString())
+const companyValuation = computed(() => {
+  return Math.pow(10, parseInt(rCompanyValuation.value) / 1000)
 })
+
+const yourTotalGrant = ref(10000)
+const yourGrantPercent = ref(25)
+const totalShares = ref(1_000_000_000)
+const strikePrice = ref(1.99)
+
+const yourShareCount = computed(() => Math.floor(yourTotalGrant.value * yourGrantPercent.value * 0.01))
+const yourCostToExercise = computed(() => yourShareCount.value * strikePrice.value)
+const yourHoldingsAtIPO = computed(() => yourShareCount.value / totalShares.value * companyValuation.value)
+const yourTotalProfit = computed(() => yourHoldingsAtIPO.value - yourCostToExercise.value)
 </script>
 
 <template>
-  <h1>{{ msg }}</h1>
-
   <div class="card">
-    <input type="range" @input="onChange" :min="Math.log10(min) * 1000" :max="Math.log10(max) * 1000"
-      :step="(Math.log10(max) - Math.log10(min)) / steps">
-    <p>
-      slider:
-      {{ new Intl.NumberFormat('en-US', {
-          maximumSignificantDigits: 3, style: 'currency', currency: 'USD'
-        }).format(slider)
-      }}
-    </p>
-  </div>
+    <p>Company valuation at IPO: {{ fmtUSD(companyValuation, 4) }}</p>
+    <input type="range" :min="sMin" :max="sMax" :step="sStep" v-model="rCompanyValuation">
 
-  <div class="card">
-    <button type="button" @click="count++">count is {{ count }}</button>
     <p>
-      Edit
-      <code>components/HelloWorld.vue</code> to test HMR
+      Total number of shares (current dilution): {{ fmtNum(totalShares) }}
     </p>
-  </div>
+    <p><input type="number" v-model="totalShares"></p>
 
-  <p>
-    Check out
-    <a href="https://vuejs.org/guide/quick-start.html#local" target="_blank">create-vue</a>, the official Vue + Vite
-    starter
-  </p>
-  <p>
-    Install
-    <a href="https://github.com/johnsoncodehk/volar" target="_blank">Volar</a>
-    in your IDE for a better DX
-  </p>
-  <p class="read-the-docs">Click on the Vite and Vue logos to learn more</p>
+    <p>
+      Number of stock options granted to you: {{ fmtNum(yourTotalGrant) }}
+    </p>
+    <p><input type="number" v-model="yourTotalGrant"></p>
+
+    <p>% of options that you have vested: {{ yourGrantPercent }}%</p>
+    <p><input type="range" min="0" max="100" step="1" v-model="yourGrantPercent"></p>
+
+    <p>Value of your options at time of IPO: {{ fmtUSD(yourHoldingsAtIPO) }}</p>
+
+    <p>Your vested share count: {{ fmtNum(yourShareCount) }}</p>
+
+    <p>Strike price for one option: ${{ strikePrice }}</p>
+    <p><input type="number" v-model="strikePrice"></p>
+    <p>Your cost to exercise: {{ fmtUSD(yourCostToExercise) }}</p>
+
+    <p>Your total profit: {{ fmtUSD(yourTotalProfit) }}</p>
+  </div>
 </template>
 
 <style scoped>
